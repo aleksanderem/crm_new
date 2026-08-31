@@ -1241,4 +1241,116 @@ describe("payments", () => {
       expect(payment!.amount).toBe(0);
     });
   });
+
+  describe("barter payments", () => {
+    test("creates a barter payment preserving the amount", async () => {
+      const t = createTestCtx();
+      const { organizationId, identity } = await seedTestUser(t);
+
+      const paymentId = await t.withIdentity(identity).action(
+        api.payments.create,
+        {
+          organizationId,
+          amount: 300,
+          currency: "PLN",
+          paymentMethod: "barter",
+          barterDescription: "Instagram collaboration",
+        },
+      );
+
+      const result = await t.withIdentity(identity).action(api.payments.list, {
+        organizationId,
+        paginationOpts: { numItems: 10, cursor: null },
+      });
+
+      const payment = result.page.find((p: any) => p._id === paymentId);
+      expect(payment).toBeTruthy();
+      expect(payment!.amount).toBe(300);
+      expect(payment!.paymentMethod).toBe("barter");
+    });
+
+    test("requires barterDescription — rejects when missing", async () => {
+      const t = createTestCtx();
+      const { organizationId, identity } = await seedTestUser(t);
+
+      await expect(
+        t.withIdentity(identity).action(api.payments.create, {
+          organizationId,
+          amount: 100,
+          currency: "PLN",
+          paymentMethod: "barter",
+          // barterDescription intentionally omitted
+        }),
+      ).rejects.toThrow("barterDescription is required for barter payments");
+    });
+
+    test("requires barterDescription — rejects empty string", async () => {
+      const t = createTestCtx();
+      const { organizationId, identity } = await seedTestUser(t);
+
+      await expect(
+        t.withIdentity(identity).action(api.payments.create, {
+          organizationId,
+          amount: 100,
+          currency: "PLN",
+          paymentMethod: "barter",
+          barterDescription: "   ",
+        }),
+      ).rejects.toThrow("barterDescription is required for barter payments");
+    });
+
+    test("splitMarkPaid rejects barter as first method", async () => {
+      const t = createTestCtx();
+      const { organizationId, identity } = await seedTestUser(t);
+
+      const paymentId = await t.withIdentity(identity).action(
+        api.payments.create,
+        {
+          organizationId,
+          amount: 200,
+          currency: "PLN",
+          paymentMethod: "cash",
+          status: "pending",
+        },
+      );
+
+      await expect(
+        t.withIdentity(identity).action(api.payments.splitMarkPaid, {
+          organizationId,
+          paymentId,
+          firstMethod: "barter",
+          firstAmount: 100,
+          secondMethod: "cash",
+          secondAmount: 100,
+        }),
+      ).rejects.toThrow("barter payments cannot be split");
+    });
+
+    test("splitMarkPaid rejects barter as second method", async () => {
+      const t = createTestCtx();
+      const { organizationId, identity } = await seedTestUser(t);
+
+      const paymentId = await t.withIdentity(identity).action(
+        api.payments.create,
+        {
+          organizationId,
+          amount: 200,
+          currency: "PLN",
+          paymentMethod: "cash",
+          status: "pending",
+        },
+      );
+
+      await expect(
+        t.withIdentity(identity).action(api.payments.splitMarkPaid, {
+          organizationId,
+          paymentId,
+          firstMethod: "cash",
+          firstAmount: 100,
+          secondMethod: "barter",
+          secondAmount: 100,
+        }),
+      ).rejects.toThrow("barter payments cannot be split");
+    });
+  });
 });

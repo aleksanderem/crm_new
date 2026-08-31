@@ -4217,7 +4217,13 @@
       "discount": "Discount",
       "discountTypeAmount": "Fixed (PLN)",
       "discountTypePercent": "Percentage (%)",
-      "discountedPrice": "Price after discount"
+      "discountedPrice": "Price after discount",
+      "gratisReason": "Gratis reason",
+      "gratisReasonPlaceholder": "E.g. complaint, promotion, gift...",
+      "gratisReasonRequired": "Gratis reason is required",
+      "barterDescription": "Barter description",
+      "barterDescriptionPlaceholder": "E.g. Instagram collaboration, service exchange...",
+      "barterDescriptionRequired": "Barter description is required"
     },
     "schedules": {
       "break": "Break",

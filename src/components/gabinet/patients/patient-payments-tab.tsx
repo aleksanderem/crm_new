@@ -36,6 +36,8 @@ type Payment = {
   notes?: string;
   discountAmount?: number | null;
   discountPercent?: number | null;
+  gratisReason?: string;
+  barterDescription?: string;
 };
 
 type PackageUsage = { _id: string; packageId: string };
@@ -111,6 +113,8 @@ export function PatientPaymentsTab({
     appointmentId?: string;
     discountAmount?: number | null;
     discountPercent?: number | null;
+    gratisReason?: string;
+    barterDescription?: string;
   }) => void;
   openCancelDialog: (paymentId: string) => void;
   navigate: (opts: { to: string; params?: Record<string, string> }) => void;
@@ -356,6 +360,8 @@ export function PatientPaymentsTab({
                                       appointmentId: payment.appointmentId,
                                       discountAmount: payment.discountAmount,
                                       discountPercent: payment.discountPercent,
+                                      gratisReason: payment.gratisReason,
+                                      barterDescription: payment.barterDescription,
                                     });
                                   }}
                                 >

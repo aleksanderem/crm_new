@@ -179,7 +179,7 @@ function PatientDetail() {
   const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
   const [paymentEditAmount, setPaymentEditAmount] = useState("");
   const [paymentEditMethod, setPaymentEditMethod] = useState<
-    "cash" | "card" | "transfer" | "package" | "other"
+    "cash" | "card" | "transfer" | "package" | "gratis" | "barter" | "other"
   >("cash");
   const [paymentEditNotes, setPaymentEditNotes] = useState("");
   const [paymentEditAppointmentId, setPaymentEditAppointmentId] = useState<
@@ -189,6 +189,8 @@ function PatientDetail() {
     "amount" | "percent"
   >("amount");
   const [paymentEditDiscountValue, setPaymentEditDiscountValue] = useState("");
+  const [paymentEditGratisReason, setPaymentEditGratisReason] = useState("");
+  const [paymentEditBarterDescription, setPaymentEditBarterDescription] = useState("");
   const [isPaymentEditSubmitting, setIsPaymentEditSubmitting] = useState(false);
 
   const [refundDialogOpen, setRefundDialogOpen] = useState(false);
@@ -614,6 +616,8 @@ function PatientDetail() {
     appointmentId?: string;
     discountAmount?: number | null;
     discountPercent?: number | null;
+    gratisReason?: string;
+    barterDescription?: string;
   }) => {
     setEditingPaymentId(payment._id);
     setPaymentEditAmount(String(payment.amount));
@@ -622,12 +626,16 @@ function PatientDetail() {
       | "card"
       | "transfer"
       | "package"
+      | "gratis"
+      | "barter"
       | "other";
     setPaymentEditMethod(
       method === "cash" ||
         method === "card" ||
         method === "transfer" ||
         method === "package" ||
+        method === "gratis" ||
+        method === "barter" ||
         method === "other"
         ? method
         : "cash",
@@ -644,6 +652,8 @@ function PatientDetail() {
       setPaymentEditDiscountType("amount");
       setPaymentEditDiscountValue("");
     }
+    setPaymentEditGratisReason(payment.gratisReason ?? "");
+    setPaymentEditBarterDescription(payment.barterDescription ?? "");
   };
 
   const closeEditPaymentDialog = () => {
@@ -652,14 +662,24 @@ function PatientDetail() {
     setPaymentEditNotes("");
     setPaymentEditAppointmentId(null);
     setPaymentEditDiscountValue("");
+    setPaymentEditGratisReason("");
+    setPaymentEditBarterDescription("");
   };
 
   const handleUpdatePayment = async () => {
     if (!editingPaymentId) return;
     const normalized = paymentEditAmount.replace(",", ".").trim();
     const amount = parseFloat(normalized);
-    if (!Number.isFinite(amount) || amount <= 0) {
+    if (paymentEditMethod !== "gratis" && (!Number.isFinite(amount) || amount <= 0)) {
       toast.error(t("gabinet.payments.amountRequired"));
+      return;
+    }
+    if (paymentEditMethod === "gratis" && !paymentEditGratisReason.trim()) {
+      toast.error(t("gabinet.payments.gratisReasonRequired", "Powód gratis jest wymagany"));
+      return;
+    }
+    if (paymentEditMethod === "barter" && !paymentEditBarterDescription.trim()) {
+      toast.error(t("gabinet.payments.barterDescriptionRequired", "Opis barteru jest wymagany"));
       return;
     }
     const discountVal =
@@ -681,11 +701,17 @@ function PatientDetail() {
       await updatePaymentAction({
         organizationId,
         paymentId: editingPaymentId,
-        amount,
+        amount: paymentEditMethod === "gratis" ? 0 : amount,
         paymentMethod: paymentEditMethod,
         notes: paymentEditNotes.trim() ? paymentEditNotes.trim() : null,
         discountAmount,
         discountPercent,
+        ...(paymentEditMethod === "gratis"
+          ? { gratisReason: paymentEditGratisReason.trim() }
+          : {}),
+        ...(paymentEditMethod === "barter"
+          ? { barterDescription: paymentEditBarterDescription.trim() }
+          : {}),
       });
       toast.success(t("gabinet.payments.updated"));
       void queryClient.invalidateQueries({ queryKey: supabaseKeys.payments.all });
@@ -1310,6 +1336,10 @@ function PatientDetail() {
         setPaymentEditDiscountType={setPaymentEditDiscountType}
         paymentEditDiscountValue={paymentEditDiscountValue}
         setPaymentEditDiscountValue={setPaymentEditDiscountValue}
+        paymentEditGratisReason={paymentEditGratisReason}
+        setPaymentEditGratisReason={setPaymentEditGratisReason}
+        paymentEditBarterDescription={paymentEditBarterDescription}
+        setPaymentEditBarterDescription={setPaymentEditBarterDescription}
         isPaymentEditSubmitting={isPaymentEditSubmitting}
         onClose={closeEditPaymentDialog}
         onSubmit={handleUpdatePayment}

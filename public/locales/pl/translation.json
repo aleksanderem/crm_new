@@ -4216,7 +4216,13 @@
       "discount": "Rabat",
       "discountTypeAmount": "Kwotowy (PLN)",
       "discountTypePercent": "Procentowy (%)",
-      "discountedPrice": "Cena po rabacie"
+      "discountedPrice": "Cena po rabacie",
+      "gratisReason": "Powód gratis",
+      "gratisReasonPlaceholder": "Np. reklamacja, promocja, upominek...",
+      "gratisReasonRequired": "Powód gratis jest wymagany",
+      "barterDescription": "Opis barteru",
+      "barterDescriptionPlaceholder": "Np. współpraca Instagram, wymiana usług...",
+      "barterDescriptionRequired": "Opis barteru jest wymagany"
     },
     "schedules": {
       "break": "Przerwa",

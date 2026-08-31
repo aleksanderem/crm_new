@@ -142,6 +142,8 @@ export function SettlementForm({
     "amount",
   );
   const [discountValue, setDiscountValue] = useState("");
+  const [gratisReason, setGratisReason] = useState("");
+  const [barterDescription, setBarterDescription] = useState("");
 
   // Split payment state
   const [splitPayment, setSplitPayment] = useState(false);
@@ -496,6 +498,14 @@ export function SettlementForm({
         toast.error(t("gabinet.payments.amountRequired"));
         return;
       }
+      if (paymentMethod === "gratis" && !gratisReason.trim()) {
+        toast.error(t("gabinet.payments.gratisReasonRequired", "Powód gratis jest wymagany"));
+        return;
+      }
+      if (paymentMethod === "barter" && !barterDescription.trim()) {
+        toast.error(t("gabinet.payments.barterDescriptionRequired", "Opis barteru jest wymagany"));
+        return;
+      }
     }
 
     setIsSubmitting(true);
@@ -638,6 +648,8 @@ export function SettlementForm({
           notes: paymentNote || undefined,
           creditEarned: creditEarned > 0 ? creditEarned : undefined,
           creditApplied: creditApplied > 0 ? creditApplied : undefined,
+          ...(paymentMethod === "gratis" && gratisReason.trim() ? { gratisReason: gratisReason.trim() } : {}),
+          ...(paymentMethod === "barter" && barterDescription.trim() ? { barterDescription: barterDescription.trim() } : {}),
         });
       }
 
@@ -660,6 +672,8 @@ export function SettlementForm({
             currency: "PLN",
             paymentMethod: batchMethod,
             notes: paymentNote || undefined,
+            ...(batchMethod === "gratis" && gratisReason.trim() ? { gratisReason: gratisReason.trim() } : {}),
+            ...(batchMethod === "barter" && barterDescription.trim() ? { barterDescription: barterDescription.trim() } : {}),
           });
         }
       }
@@ -758,6 +772,8 @@ export function SettlementForm({
                 value={paymentMethod === "package" ? "" : paymentMethod}
                 onValueChange={(v) => {
                   setPaymentMethod(v);
+                  setGratisReason("");
+                  setBarterDescription("");
                   if (v === "gratis") {
                     setPaymentAmount("0");
                   } else if (v === "barter") {
@@ -852,6 +868,26 @@ export function SettlementForm({
                   })()}
                 </div>
               </>
+            )}
+            {paymentMethod === "gratis" && (
+              <div>
+                <Label>{t("gabinet.payments.gratisReason", "Powód gratis")}</Label>
+                <Input
+                  value={gratisReason}
+                  onChange={(e) => setGratisReason(e.target.value)}
+                  placeholder={t("gabinet.payments.gratisReasonPlaceholder", "Np. reklamacja, promocja, upominek...")}
+                />
+              </div>
+            )}
+            {paymentMethod === "barter" && (
+              <div>
+                <Label>{t("gabinet.payments.barterDescription", "Opis barteru")}</Label>
+                <Input
+                  value={barterDescription}
+                  onChange={(e) => setBarterDescription(e.target.value)}
+                  placeholder={t("gabinet.payments.barterDescriptionPlaceholder", "Np. współpraca Instagram, wymiana usług...")}
+                />
+              </div>
             )}
             {!isPackageMode && !isFixedAmountMethod && outstanding > 0 && (
               <div>

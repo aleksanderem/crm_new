@@ -142,6 +142,33 @@ export function computeEmployeeStats(
     .sort((a, b) => b.count - a.count);
 }
 
+export interface GratisBarterDetail {
+  appointmentId: string;
+  paymentMethod: "gratis" | "barter";
+  amount: number;
+  gratisReason?: string;
+  barterDescription?: string;
+}
+
+export function computeGratisBarterStats(details: GratisBarterDetail[]): {
+  gratisCount: number;
+  gratisValue: number;
+  barterCount: number;
+  barterValue: number;
+} {
+  let gratisCount = 0, gratisValue = 0, barterCount = 0, barterValue = 0;
+  for (const d of details) {
+    if (d.paymentMethod === "gratis") {
+      gratisCount++;
+      gratisValue += d.amount;
+    } else {
+      barterCount++;
+      barterValue += d.amount;
+    }
+  }
+  return { gratisCount, gratisValue, barterCount, barterValue };
+}
+
 const PAYMENT_CATEGORIES = ["cash", "card", "transfer", "package", "other"] as const;
 export type PaymentCategory = (typeof PAYMENT_CATEGORIES)[number];
 

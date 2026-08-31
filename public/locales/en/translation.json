@@ -4032,7 +4032,20 @@
       "noProductSales": "No product sales in this period",
       "perProductBreakdown": "By Product",
       "perEmployeeProductSales": "By Employee",
-      "unattributedReturnsNote": "{{count}} return(s) totalling {{amount}} have no payment method and could not be deducted from any category"
+      "unattributedReturnsNote": "{{count}} return(s) totalling {{amount}} have no payment method and could not be deducted from any category",
+      "gratisBarterTitle": "Gratis & Barter",
+      "gratis": "Gratis",
+      "barter": "Barter",
+      "gratisNote": "Services provided free of charge – not counted toward revenue",
+      "barterNote": "Accounting reference value – not cash income",
+      "referenceValue": "Reference value",
+      "barterAccountingValue": "Accounting value",
+      "settlementType": "Settlement type",
+      "settlementAll": "All",
+      "settlementStandard": "Standard only",
+      "settlementGratis": "Gratis only",
+      "settlementBarter": "Barter only",
+      "noGratisBarter": "No gratis or barter settlements in this period"
     },
     "bodyChart": {
       "description": "Mark body areas related to the appointment",

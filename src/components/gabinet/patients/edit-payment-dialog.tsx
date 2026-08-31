@@ -19,6 +19,8 @@ import {
 import type { TFunction } from "i18next";
 import type { MappedGabinetAppointment } from "@/lib/supabase/mappers/gabinet/appointments";
 
+type PaymentMethod = "cash" | "card" | "transfer" | "package" | "gratis" | "barter" | "other";
+
 export function EditPaymentDialog({
   editingPaymentId,
   paymentEditAmount,
@@ -32,6 +34,10 @@ export function EditPaymentDialog({
   setPaymentEditDiscountType,
   paymentEditDiscountValue,
   setPaymentEditDiscountValue,
+  paymentEditGratisReason,
+  setPaymentEditGratisReason,
+  paymentEditBarterDescription,
+  setPaymentEditBarterDescription,
   isPaymentEditSubmitting,
   onClose,
   onSubmit,
@@ -42,8 +48,8 @@ export function EditPaymentDialog({
   editingPaymentId: string | null;
   paymentEditAmount: string;
   setPaymentEditAmount: (v: string) => void;
-  paymentEditMethod: "cash" | "card" | "transfer" | "package" | "other";
-  setPaymentEditMethod: (v: "cash" | "card" | "transfer" | "package" | "other") => void;
+  paymentEditMethod: PaymentMethod;
+  setPaymentEditMethod: (v: PaymentMethod) => void;
   paymentEditNotes: string;
   setPaymentEditNotes: (v: string) => void;
   paymentEditAppointmentId: string | null;
@@ -51,6 +57,10 @@ export function EditPaymentDialog({
   setPaymentEditDiscountType: (v: "amount" | "percent") => void;
   paymentEditDiscountValue: string;
   setPaymentEditDiscountValue: (v: string) => void;
+  paymentEditGratisReason: string;
+  setPaymentEditGratisReason: (v: string) => void;
+  paymentEditBarterDescription: string;
+  setPaymentEditBarterDescription: (v: string) => void;
   isPaymentEditSubmitting: boolean;
   onClose: () => void;
   onSubmit: () => Promise<void>;
@@ -58,6 +68,8 @@ export function EditPaymentDialog({
   getApptPrice: (apt?: MappedGabinetAppointment | null) => number;
   t: TFunction;
 }) {
+  const isFixedAmount = paymentEditMethod === "gratis";
+
   return (
     <Dialog
       open={editingPaymentId !== null}
@@ -78,7 +90,8 @@ export function EditPaymentDialog({
             <Input
               type="text"
               inputMode="decimal"
-              value={paymentEditAmount}
+              value={isFixedAmount ? "0.00" : paymentEditAmount}
+              disabled={isFixedAmount}
               onChange={(e) => {
                 const v = e.target.value;
                 if (v === "" || /^[0-9]*[.,]?[0-9]*$/.test(v)) {
@@ -87,16 +100,23 @@ export function EditPaymentDialog({
               }}
               placeholder="0.00"
             />
+            {isFixedAmount && (
+              <p className="text-xs text-muted-foreground mt-1">
+                {t("gabinet.payments.amountLockedToTreatment")}
+              </p>
+            )}
           </div>
           <div>
             <Label>{t("gabinet.payments.method")}</Label>
             <Select
               value={paymentEditMethod}
-              onValueChange={(v) =>
-                setPaymentEditMethod(
-                  v as "cash" | "card" | "transfer" | "package" | "other",
-                )
-              }
+              onValueChange={(v) => {
+                const method = v as PaymentMethod;
+                setPaymentEditMethod(method);
+                if (method !== "gratis") setPaymentEditGratisReason("");
+                if (method !== "barter") setPaymentEditBarterDescription("");
+                if (method === "gratis") setPaymentEditAmount("0");
+              }}
             >
               <SelectTrigger>
                 <SelectValue />
@@ -114,13 +134,47 @@ export function EditPaymentDialog({
                 <SelectItem value="package">
                   {t("gabinet.payments.methods.package")}
                 </SelectItem>
+                <SelectItem value="gratis">
+                  {t("gabinet.payments.methods.gratis")}
+                </SelectItem>
+                <SelectItem value="barter">
+                  {t("gabinet.payments.methods.barter")}
+                </SelectItem>
                 <SelectItem value="other">
                   {t("gabinet.payments.methods.other")}
                 </SelectItem>
               </SelectContent>
             </Select>
           </div>
+          {paymentEditMethod === "gratis" && (
+            <div>
+              <Label>{t("gabinet.payments.gratisReason", "Powód gratis")}</Label>
+              <Input
+                value={paymentEditGratisReason}
+                onChange={(e) => setPaymentEditGratisReason(e.target.value)}
+                placeholder={t(
+                  "gabinet.payments.gratisReasonPlaceholder",
+                  "Np. reklamacja, promocja, upominek...",
+                )}
+              />
+            </div>
+          )}
+          {paymentEditMethod === "barter" && (
+            <div>
+              <Label>{t("gabinet.payments.barterDescription", "Opis barteru")}</Label>
+              <Input
+                value={paymentEditBarterDescription}
+                onChange={(e) => setPaymentEditBarterDescription(e.target.value)}
+                placeholder={t(
+                  "gabinet.payments.barterDescriptionPlaceholder",
+                  "Np. współpraca Instagram, wymiana usług...",
+                )}
+              />
+            </div>
+          )}
           {paymentEditAppointmentId &&
+            paymentEditMethod !== "gratis" &&
+            paymentEditMethod !== "barter" &&
             (() => {
               const apt = (patientAppointments ?? []).find(
                 (a) => a._id === paymentEditAppointmentId,

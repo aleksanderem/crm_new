@@ -480,6 +480,8 @@ export const update = action({
     notes: v.optional(v.union(v.string(), v.null())),
     discountAmount: v.optional(v.union(v.number(), v.null())),
     discountPercent: v.optional(v.union(v.number(), v.null())),
+    gratisReason: v.optional(v.string()),
+    barterDescription: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const authResult = await ctx.runAction(
@@ -497,12 +499,17 @@ export const update = action({
       throw new Error(`Cannot edit a ${payment.status} payment`);
     }
 
+    const effectiveMethod = args.paymentMethod ?? (payment.paymentMethod as string);
+
     const updates: Record<string, unknown> = { updatedAt: Date.now() };
     if (args.amount !== undefined) {
-      if (!Number.isFinite(args.amount) || args.amount <= 0) {
+      if (effectiveMethod === "gratis") {
+        updates.amount = 0; // gratis is always 0 (issue #5659)
+      } else if (!Number.isFinite(args.amount) || args.amount <= 0) {
         throw new Error("Amount must be a positive number");
+      } else {
+        updates.amount = args.amount;
       }
-      updates.amount = args.amount;
     }
     if (args.paymentMethod !== undefined) {
       updates.paymentMethod = args.paymentMethod;
@@ -515,6 +522,28 @@ export const update = action({
     }
     if (args.discountPercent !== undefined) {
       updates.discountPercent = args.discountPercent;
+    }
+
+    // Gratis: require reason, update field, clear when switching away
+    if (effectiveMethod === "gratis") {
+      const reason = args.gratisReason?.trim();
+      if (!reason) {
+        throw new Error("gratisReason is required for gratis payments");
+      }
+      updates.gratisReason = reason;
+    } else if (args.paymentMethod !== undefined) {
+      updates.gratisReason = null;
+    }
+
+    // Barter: require description, update field, clear when switching away
+    if (effectiveMethod === "barter") {
+      const desc = args.barterDescription?.trim();
+      if (!desc) {
+        throw new Error("barterDescription is required for barter payments");
+      }
+      updates.barterDescription = desc;
+    } else if (args.paymentMethod !== undefined) {
+      updates.barterDescription = null;
     }
 
     await db.patch("payments", args.paymentId, updates);

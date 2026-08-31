@@ -28,6 +28,8 @@ export interface MappedPayment {
   kind?: string;
   discountAmount?: number;
   discountPercent?: number;
+  gratisReason?: string;
+  barterDescription?: string;
   _source: "supabase";
 }
 

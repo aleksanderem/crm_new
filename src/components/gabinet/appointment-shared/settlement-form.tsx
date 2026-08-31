@@ -95,6 +95,9 @@ const PAYMENT_METHODS = [
 // section, not a payment method.
 const PAY_METHODS = PAYMENT_METHODS.filter((m) => m !== "package");
 
+// Split-payment legs cannot use "gratis" (backend enforces this in splitMarkPaid).
+const SPLIT_PAY_METHODS = PAY_METHODS.filter((m) => m !== "gratis");
+
 export function SettlementForm({
   organizationId,
   appointmentId,
@@ -1132,7 +1135,7 @@ export function SettlementForm({
                       <SelectLabel>
                         {t("gabinet.payments.groupPayment", "Metody płatności")}
                       </SelectLabel>
-                      {PAY_METHODS.map((m) => (
+                      {SPLIT_PAY_METHODS.map((m) => (
                         <SelectItem key={m} value={m}>
                           {t(`gabinet.payments.methods.${m}`)}
                         </SelectItem>
@@ -1222,7 +1225,7 @@ export function SettlementForm({
                       <SelectLabel>
                         {t("gabinet.payments.groupPayment", "Metody płatności")}
                       </SelectLabel>
-                      {PAY_METHODS.map((m) => (
+                      {SPLIT_PAY_METHODS.map((m) => (
                         <SelectItem key={m} value={m}>
                           {t(`gabinet.payments.methods.${m}`)}
                         </SelectItem>
